@@ -155,11 +155,12 @@ export default function Home() {
           <span>AetherPlay</span>
         </div>
 
-        <form onSubmit={handleSearch} className="search-bar-container">
+        <form onSubmit={handleSearch} className="search-bar-container" id="search-form-id">
           <svg className="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
           <input
+            id="search-input-id"
             type="text"
             placeholder="Search games..."
             value={searchQuery}
@@ -189,6 +190,7 @@ export default function Home() {
         {CATEGORIES.map((cat) => (
           <button
             key={cat.id}
+            id={`category-btn-${cat.id || "popular"}`}
             onClick={() => {
               setActiveCategory(cat.id);
               setShowFavoritesOnly(false);
