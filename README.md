@@ -38,7 +38,7 @@ graph TD
 - **API Endpoints**:
   - `/api/games`: Dynamic scraping of lists and categories.
   - `/api/search`: Translates searches into local endpoints.
-  - `/api/gameframe/[slug]`: Mirrors gameframes, stripping frame-breakers and rewriting origins.
+  - `/api/gameframe/[slug]`: Extracts direct game embed URLs on the server, bypassing ad blocker hangs, and returns a clean iframe wrapper.
   - `/api/proxy/[...path]`: Mirrors binary assets and rewrites absolute CDN domains inside text assets.
   - `/api/proxy-dist/[...path]`: Mirrors dist scripts/stylesheets from the original site.
   - `/api/proxy-images/[...path]`: Mirrors static thumbnail images.
