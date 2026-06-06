@@ -118,4 +118,23 @@ test.describe("AetherPlay Unblocked Platform E2E Tests", () => {
     const favTitle = await page.locator(".game-card-title").textContent();
     expect(favTitle).toBe(gameTitle);
   });
+
+  test("should register the Service Worker on startup", async ({ page }) => {
+    await page.goto("/");
+
+    // Wait and check if Service Worker is registered
+    const swRegistered = await page.evaluate(async () => {
+      if (!("serviceWorker" in navigator)) return false;
+
+      // Poll up to 3 seconds for registration to prevent flakiness
+      for (let i = 0; i < 30; i++) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        if (regs.length > 0) return true;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return false;
+    });
+
+    expect(swRegistered).toBe(true);
+  });
 });
