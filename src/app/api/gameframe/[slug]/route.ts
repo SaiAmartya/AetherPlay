@@ -17,26 +17,73 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       return new Response(`Failed to fetch gameframe: ${response.statusText}`, { status: response.status });
     }
 
-    let html = await response.text();
+    const html = await response.text();
 
-    // 1. Rewrite relative paths starting with /dist/ to use our /api/proxy-dist/ proxy
-    html = html.replace(/href="\/dist\//g, 'href="/api/proxy-dist/');
-    html = html.replace(/src="\/dist\//g, 'src="/api/proxy-dist/');
+    // Extract window.gameData object from script
+    const match = html.match(/window\.gameData\s*=\s*({[\s\S]*?})[\s;<\n]/);
+    if (!match) {
+      return new Response("Game metadata not found in original frame", { status: 404 });
+    }
 
-    // 2. Rewrite twoplayergames.org domains to local proxy endpoints (both plain and escaped JSON format)
-    html = html.replace(/https:[\\/]+files\.twoplayergames\.org/g, "/api/proxy");
-    html = html.replace(/https:[\\/]+images\.twoplayergames\.org/g, "/api/proxy-images");
-    html = html.replace(/https:[\\/]+(www\.)?twoplayergames\.org/g, "");
+    let embedUrl = "";
+    try {
+      const gameData = JSON.parse(match[1]);
+      embedUrl = gameData.embed || "";
+    } catch (e) {
+      console.error("Failed to parse gameData JSON:", e);
+      return new Response("Failed to parse game metadata", { status: 500 });
+    }
 
-    // 3. Prevent the iframe breakout scripts or redirection scripts from redirecting to top-level if needed
-    // The original page script might do `if (window.self === window.top) { ... }` which is fine inside the iframe.
-    // If there is any framebuster script like `window.top.location = window.self.location`, we can neutralize it.
-    // In this case, twoplayergames.org uses standard embeds.
+    if (!embedUrl) {
+      return new Response("No direct game embed URL found", { status: 404 });
+    }
+
+    // Rewrite the embed URL to use our local proxies
+    let proxiedEmbedUrl = embedUrl;
+    if (proxiedEmbedUrl.includes("files.twoplayergames.org")) {
+      proxiedEmbedUrl = proxiedEmbedUrl.replace("https://files.twoplayergames.org", "/api/proxy");
+    } else if (proxiedEmbedUrl.includes("images.twoplayergames.org")) {
+      proxiedEmbedUrl = proxiedEmbedUrl.replace("https://images.twoplayergames.org", "/api/proxy-images");
+    } else if (proxiedEmbedUrl.startsWith("/")) {
+      // Relative path fallback
+      proxiedEmbedUrl = `/api/proxy${proxiedEmbedUrl}`;
+    }
+
+    // Return a clean, ad-free wrapper page that loads the game directly in an iframe
+    const wrapperHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AetherPlay Client</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <iframe 
+        src="${proxiedEmbedUrl}" 
+        allow="autoplay; gamepad; keyboard; focus-without-user-activation *"
+    ></iframe>
+</body>
+</html>`;
 
     const responseHeaders = new Headers();
     responseHeaders.set("Content-Type", "text/html; charset=utf-8");
     
-    return new Response(html, {
+    return new Response(wrapperHtml, {
       status: 200,
       headers: responseHeaders,
     });
