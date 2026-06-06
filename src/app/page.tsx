@@ -47,6 +47,8 @@ export default function Home() {
 
   // Fetch games based on active category
   useEffect(() => {
+    let active = true;
+
     if (showFavoritesOnly) {
       setGames(favorites);
       setIsLoading(false);
@@ -61,20 +63,30 @@ export default function Home() {
           : "/api/games";
         const res = await fetch(url);
         const data = await res.json();
-        if (data.games) {
-          setGames(data.games);
-        } else {
-          setGames([]);
+        if (active) {
+          if (data.games) {
+            setGames(data.games);
+          } else {
+            setGames([]);
+          }
         }
       } catch (err) {
         console.error("Error fetching games:", err);
-        setGames([]);
+        if (active) {
+          setGames([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (active) {
+          setIsLoading(false);
+        }
       }
     }
 
     fetchGames();
+
+    return () => {
+      active = false;
+    };
   }, [activeCategory, showFavoritesOnly, favorites]);
 
   // Handle Search Submission
